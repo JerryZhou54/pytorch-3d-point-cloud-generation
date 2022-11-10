@@ -48,12 +48,21 @@
 # 	--lrSched restart --T_0 5 --T_mult 2 --lrBase 1e-3 \
 # 	--gpu 1
 
-python train_stg1.py --model ORIG_STG1 --experiment adam_trueWD_restart \
-	--endEpoch 1000 \
+"""
+ python train_stg1.py --model ORIG_STG1 --experiment no_XY \
+	--endEpoch 1 \
 	--chunkSize 100 --batchSize 100 \
-	--optim adam --trueWD 1e-4 --lr 1e-2 \
+    --optim adam --trueWD 1e-4 --lr 1e-2 \
 	--lrSched restart --T_0 5 --T_mult 2 --lrBase 1e-4 \
-	--gpu 1
+	--gpu 0 \
+"""
+
+python train_stg1.py --model CUSTOM --experiment deeper_model \
+	--endEpoch 10 \
+	--chunkSize 100 --batchSize 100 \
+	--optim adam --trueWD 1e-4 --lr 7e-3 \
+	--lrSched restart --T_0 5 --T_mult 2 --lrBase 7e-3 \
+	--gpu 0 \
 
 # python train_stg1.py --model ORIG_STG1 --experiment sgd_trueWD_restart \
 # 	--endEpoch 1000 \

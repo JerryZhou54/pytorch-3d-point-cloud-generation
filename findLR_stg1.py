@@ -1,6 +1,7 @@
 import options
 import utils
 from trainer import TrainerStage1
+from custom_transformer import Custom_Transformer
 
 if __name__ == "__main__":
 
@@ -15,7 +16,8 @@ if __name__ == "__main__":
     criterions = utils.define_losses()
     dataloaders = utils.make_data_fixed(cfg)
 
-    model = utils.build_structure_generator(cfg).to(cfg.device)
+    #model = utils.build_structure_generator(cfg).to(cfg.device)
+    model = Custom_Transformer()
     optimizer = utils.make_optimizer(cfg, model)
 
     writer = utils.make_summary_writer(EXPERIMENT)

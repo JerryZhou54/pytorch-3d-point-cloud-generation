@@ -24,6 +24,8 @@ class TrainerStage1:
 
     def train(self, model, optimizer, scheduler):
         print("======= TRAINING START =======")
+        total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        print(total_params)
 
         for self.epoch in range(self.cfg.startEpoch, self.cfg.endEpoch):
             print(f"Epoch {self.epoch}:")
@@ -61,6 +63,7 @@ class TrainerStage1:
         for self.iteration, batch in enumerate(data_loader, self.iteration):
             input_images, depthGT, maskGT = utils.unpack_batch_fixed(batch, self.cfg.device)
             # ------ define ground truth------
+            """
             XGT, YGT = torch.meshgrid([
                 torch.arange(self.cfg.outH), # [H,W]
                 torch.arange(self.cfg.outW)]) # [H,W]
@@ -69,17 +72,18 @@ class TrainerStage1:
                 XGT.repeat([self.cfg.outViewN, 1, 1]), 
                 YGT.repeat([self.cfg.outViewN, 1, 1])], dim=0) #[2V,H,W]
             XYGT = XYGT.unsqueeze(dim=0).to(self.cfg.device) # [1,2V,H,W] 
+            """
 
             with torch.set_grad_enabled(True):
                 optimizer.zero_grad()
 
-                XYZ, maskLogit = model(input_images)
-                XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
-                depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN * 3, :,  :]
+                depth, maskLogit = model(input_images)
+                #XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
+                #depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN * 3, :,  :]
                 mask = (maskLogit > 0).byte()
                 # ------ Compute loss ------
-                loss_XYZ = self.l1(XY, XYGT)
-                loss_XYZ += self.l1(depth.masked_select(mask),
+                #loss_XYZ = self.l1(XY, XYGT)
+                loss_XYZ = self.l1(depth.masked_select(mask),
                                     depthGT.masked_select(mask))
                 loss_mask = self.sigmoid_bce(maskLogit, maskGT)
                 loss = loss_mask + self.cfg.lambdaDepth * loss_XYZ
@@ -123,6 +127,7 @@ class TrainerStage1:
         for batch in data_loader:
             input_images, depthGT, maskGT = utils.unpack_batch_fixed(batch, self.cfg.device)
             # ------ define ground truth------
+            """
             XGT, YGT = torch.meshgrid([
                 torch.arange(self.cfg.outH), # [H,W]
                 torch.arange(self.cfg.outW)]) # [H,W]
@@ -131,15 +136,17 @@ class TrainerStage1:
                 XGT.repeat([self.cfg.outViewN, 1, 1]), 
                 YGT.repeat([self.cfg.outViewN, 1, 1])], dim=0) #[2V,H,W]
             XYGT = XYGT.unsqueeze(dim=0).to(self.cfg.device) # [1,2V,H,W] 
+            """
 
             with torch.set_grad_enabled(False):
-                XYZ, maskLogit = model(input_images)
-                XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
-                depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN*3,:,:]
+                #XYZ, maskLogit = model(input_images)
+                #XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
+                #depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN*3,:,:]
+                depth, maskLogit = model(input_images)
                 mask = (maskLogit > 0).byte()
                 # ------ Compute loss ------
-                loss_XYZ = self.l1(XY, XYGT)
-                loss_XYZ += self.l1(depth.masked_select(mask),
+                #loss_XYZ = self.l1(XY, XYGT)
+                loss_XYZ = self.l1(depth.masked_select(mask),
                                     depthGT.masked_select(mask))
                 loss_mask = self.sigmoid_bce(maskLogit, maskGT)
                 loss = loss_mask + self.cfg.lambdaDepth * loss_XYZ
@@ -163,11 +170,19 @@ class TrainerStage1:
 
         batch = next(iter(self.data_loaders[1]))
         input_images, depthGT, maskGT = utils.unpack_batch_fixed(batch, self.cfg.device)
+        XGT, YGT = torch.meshgrid([
+            torch.arange(self.cfg.outH), # [H,W]
+            torch.arange(self.cfg.outW)]) # [H,W]
+        XGT, YGT = XGT.float(), YGT.float()
+        XYGT = torch.cat([
+            XGT.repeat([self.cfg.outViewN, 1, 1]), 
+            YGT.repeat([self.cfg.outViewN, 1, 1])], dim=0) #[2V,H,W]
+        XY = XYGT.unsqueeze(dim=0).to(self.cfg.device) # [1,2V,H,W] 
 
         with torch.set_grad_enabled(False):
-            XYZ, maskLogit = model(input_images)
-            XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
-            depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN * 3, :,  :]
+            depth, maskLogit = model(input_images)
+            #XY = XYZ[:, :self.cfg.outViewN * 2, :, :]
+            #depth = XYZ[:, self.cfg.outViewN * 2:self.cfg.outViewN * 3, :,  :]
             mask = (maskLogit > 0).float()
 
         return {'RGB': utils.make_grid(input_images[:num_imgs]),
@@ -250,6 +265,11 @@ class TrainerStage2:
         self.history = []
         self.on_after_epoch = on_after_epoch
         self.on_after_batch = on_after_batch
+        XGT, YGT = torch.meshgrid([torch.arange(self.cfg.outH), # [H,W]
+                                       torch.arange(self.cfg.outW)]) # [H,W]
+        XGT, YGT = XGT.float(), YGT.float()
+        self.X, self.Y = XGT.repeat([self.cfg.outViewN, 1, 1]).unsqueeze(dim=0), YGT.repeat([self.cfg.outViewN, 1, 1]).unsqueeze(dim=0)
+        self.X, self.Y = self.X.repeat([self.cfg.batchSize, 1, 1, 1]).to(self.cfg.device), self.Y.repeat([self.cfg.batchSize, 1, 1, 1]).to(self.cfg.device)
 
     def train(self, model, optimizer, scheduler):
         print("======= TRAINING START =======")
@@ -295,7 +315,13 @@ class TrainerStage2:
             with torch.set_grad_enabled(True):
                 optimizer.zero_grad()
 
-                XYZ, maskLogit = model(input_images)
+                depth, maskLogit = model(input_images)
+                XYZ = torch.cat([self.X, self.Y, depth], dim=1)
+                """
+                with torch.no_grad():
+                    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                    print("Total trainable parameters:", total_params)
+                """
                 # ------ build transformer ------
                 XYZid, ML = transform.fuse3D(
                     self.cfg, XYZ, maskLogit, fuseTrans) # [B,3,VHW],[B,1,VHW]
@@ -350,7 +376,8 @@ class TrainerStage2:
             input_images, renderTrans, depthGT, maskGT = utils.unpack_batch_novel(batch, self.cfg.device)
 
             with torch.set_grad_enabled(False):
-                XYZ, maskLogit = model(input_images)
+                depth, maskLogit = model(input_images)
+                XYZ = torch.cat([self.X, self.Y, depth], dim=1)
                 # ------ build transformer ------
                 XYZid, ML = transform.fuse3D(
                     self.cfg, XYZ, maskLogit, fuseTrans) # [B,3,VHW],[B,1,VHW]
@@ -386,7 +413,8 @@ class TrainerStage2:
         input_images, renderTrans, depthGT, maskGT = utils.unpack_batch_novel(batch, self.cfg.device)
 
         with torch.set_grad_enabled(False):
-            XYZ, maskLogit = model(input_images)
+            depth, maskLogit = model(input_images)
+            XYZ = torch.cat([self.X, self.Y, depth], dim=1)
             # ------ build transformer ------
             XYZid, ML = transform.fuse3D(
                 self.cfg, XYZ, maskLogit, fuseTrans) # [B,3,VHW],[B,1,VHW]
@@ -469,11 +497,17 @@ class Validator:
         self.history = []
         self.CADs = dataset.CADs
         self.result_path = f"results/{cfg.model}_{cfg.experiment}"
+        XGT, YGT = torch.meshgrid([torch.arange(self.cfg.outH), # [H,W]
+                                       torch.arange(self.cfg.outW)]) # [H,W]
+        XGT, YGT = XGT.float(), YGT.float()
+        self.X, self.Y = XGT.repeat([self.cfg.outViewN, 1, 1]).unsqueeze(dim=0), YGT.repeat([self.cfg.outViewN, 1, 1]).unsqueeze(dim=0)
+        self.X, self.Y = self.X.repeat([self.cfg.batchSize, 1, 1, 1]).to(self.cfg.device), self.Y.repeat([self.cfg.batchSize, 1, 1, 1]).to(self.cfg.device)
 
     def eval(self, model):
         print("======= EVALUATION START =======")
 
         fuseTrans = self.cfg.fuseTrans
+        avg_points = []
         for i in range(len(self.dataset)):
             cad = self.dataset[i]
             input_images = torch.from_numpy(cad['image_in'])\
@@ -481,7 +515,8 @@ class Validator:
                                 .float().to(self.cfg.device)
             points24 = np.zeros([self.cfg.inputViewN, 1], dtype=np.object)
 
-            XYZ, maskLogit = model(input_images)
+            depth, maskLogit = model(input_images)
+            XYZ = torch.cat([self.X, self.Y, depth], dim=1)
             mask = (maskLogit > 0).float()
             # ------ build transformer ------
             XYZid, ML = transform.fuse3D(
@@ -501,7 +536,10 @@ class Validator:
             print(f"{pointMeanN:.2f} points save to {self.result_path}/{self.CADs[i]}.mat")
             self.history.append(
                 {"cad": self.CADs[i], "average points": pointMeanN})
+            if not np.isnan(pointMeanN) and not np.isinf(pointMeanN):
+                    avg_points.append(pointMeanN)
 
+        print("Total Average Points:", np.mean(avg_points))
         print("======= EVALUATION DONE =======")
         return pd.DataFrame(self.history)
 
@@ -511,6 +549,8 @@ class Validator:
 
         pred2GT_all = np.ones([CADN, self.cfg.inputViewN]) * np.inf
         GT2pred_all = np.ones([CADN, self.cfg.inputViewN]) * np.inf
+        avg_pred2GT = []
+        avg_GT2pred = []
         with torch.set_grad_enabled(False):
             for m, cad in enumerate(self.CADs):
                 # load GT
@@ -535,8 +575,14 @@ class Validator:
                         "GT->pred": GT2pred_all[m].mean()*100,}
                 print(info)
                 self.history.append(info)
+                if not np.isnan(info["GT->pred"]) and not np.isinf(info["GT->pred"]):
+                    avg_GT2pred.append(info["GT->pred"])
+                if not np.isnan(info["pred->GT"]) and not np.isinf(info["pred->GT"]):
+                    avg_pred2GT.append(info["pred->GT"])
 
         print("======= EVALUATION DONE =======")
+        print("Total Average GT->pred:", np.mean(avg_GT2pred))
+        print("Total Average pred->GT:", np.mean(avg_pred2GT))
         return pd.DataFrame(self.history)
 
     def _computeTestError(self, Vs, Vt, type):

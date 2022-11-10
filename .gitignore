@@ -2,6 +2,7 @@
 runs/
 # Model output
 models/
+results/
 # Logs
 logs/
 # Data symlinks

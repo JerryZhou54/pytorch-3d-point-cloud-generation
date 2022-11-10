@@ -1,6 +1,8 @@
 import options
 import utils
 from trainer import TrainerStage2
+from custom_transformer import Custom_Transformer
+import torch
 
 if __name__ == "__main__":
 
@@ -20,7 +22,11 @@ if __name__ == "__main__":
     criterions = utils.define_losses()
     dataloaders = utils.make_data_novel(cfg)
 
-    model = utils.build_structure_generator(cfg).to(cfg.device)
+    if cfg.model == "CUSTOM":
+        model = Custom_Transformer().to(cfg.device)
+        model.load_state_dict(torch.load(f"models/{cfg.loadPath}/best.pth"))
+    else:
+        model = utils.build_structure_generator(cfg).to(cfg.device)
     optimizer = utils.make_optimizer(cfg, model)
     scheduler = utils.make_lr_scheduler(cfg, optimizer)
 

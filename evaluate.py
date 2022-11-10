@@ -1,6 +1,8 @@
 import options
 import utils
 from trainer import Validator
+from custom_transformer import Custom_Transformer
+import torch
 
 if __name__ == "__main__":
 
@@ -18,7 +20,11 @@ if __name__ == "__main__":
     dataloaders = utils.make_data_fixed(cfg)
     test_dataset = dataloaders[1].dataset
 
-    model = utils.build_structure_generator(cfg).to(cfg.device)
+    if cfg.model == "CUSTOM":
+        model = Custom_Transformer().to(cfg.device)
+        model.load_state_dict(torch.load(f"models/{cfg.loadPath}/best.pth"))
+    else:
+        model = utils.build_structure_generator(cfg).to(cfg.device)
 
     validator = Validator(cfg, test_dataset) 
 

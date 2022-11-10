@@ -151,8 +151,9 @@ def get_arguments():
     cfg.BNdecay = 0.999
     cfg.inputViewN = 24
     # ------ below automatically set ------
-    cfg.device = torch.device(
-        f"cuda:{cfg.gpu}" if torch.cuda.is_available() else "cpu")
+    #cfg.device = torch.device(
+    #    f"cuda:{cfg.gpu}" if torch.cuda.is_available() else "cpu")
+    cfg.device = torch.device(f"cuda:{cfg.gpu}")
     cfg.inH, cfg.inW = [int(x) for x in cfg.inSize.split("x")]
     cfg.outH, cfg.outW = [int(x) for x in cfg.outSize.split("x")]
     cfg.H, cfg.W = [int(x) for x in cfg.predSize.split("x")]
